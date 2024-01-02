@@ -3,9 +3,27 @@ const jwt = require("jsonwebtoken");
 const User = require("../services/schemas/UserSchema");
 const Product = require("../services/schemas/ProductSchema");
 const MyProducts = require("../services/schemas/MyProductSchema");
+const { error } = require("console");
 require("dotenv").config();
 const secret = process.env.SECRET;
 exports.secret = secret;
+
+const getUsers = async (req, res, next) => {
+  try {
+    const results = await services.getUsers();
+    res.json({
+      status: "Success",
+      code: 200,
+      data: results,
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: "error",
+      code: 404,
+    });
+    next(error);
+  }
+};
 
 const userSignup = async (req, res) => {
   const { name, email, password } = req.body;
@@ -82,6 +100,23 @@ const userLogout = async (req, res, next) => {
     res.status(404).json({
       status: "error",
     });
+  }
+};
+
+const getProducts = async (req, res, next) => {
+  try {
+    const results = await services.getProducts();
+    res.json({
+      status: "Success",
+      code: 200,
+      data: results,
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: "error",
+      code: 404,
+    });
+    next(error);
   }
 };
 
@@ -195,26 +230,23 @@ const getAllProductsByQuery = async (req, res, next) => {
 
 const addMyProducts = async (req, res) => {
   try {
-    console.log(req.body);
+    console.log(req.user);
     const { _id } = req.user;
-    console.log(_id);
     const { productName, productWeight, date } = req.body;
+    console.log(req.body);
     const productCalories = await services.countCalories(
       productName,
       productWeight
     );
-
     const product = await MyProducts.findOne({
       date,
       owner: _id,
       productInfo: { $elemMatch: { productName } },
     });
-
     if (product) {
       const index = product.productInfo.findIndex(
         (product) => product.productName === productName
       );
-      console.log(index);
       const newWeight =
         Number(product.productInfo[index].productWeight) +
         Number(productWeight);
@@ -229,7 +261,6 @@ const addMyProducts = async (req, res) => {
           },
         }
       );
-
       await MyProducts.findOneAndUpdate(
         { date, owner: _id },
         {
@@ -343,10 +374,10 @@ const deleteMyProducts = async (req, res) => {
 };
 
 const getMyProducts = async (req, res) => {
-  console.log(req.body);
   try {
     const { date } = req.body;
     const { _id } = req.user;
+
     const productList = await MyProducts.find({ owner: _id, date });
     console.log(productList);
     return res.status(200).json({ status: "success", code: 200, productList });
@@ -359,9 +390,11 @@ const getMyProducts = async (req, res) => {
 };
 
 module.exports = {
+  getUsers,
   userSignup,
   userLogin,
   userLogout,
+  getProducts,
   getDailyRateController,
   notAllowedProducts,
   getAllProductsByQuery,

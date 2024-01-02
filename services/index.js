@@ -1,12 +1,16 @@
-const Product = require("./schemas/ProductSchema");
-const User = require("./schemas/UserSchema");
+const Product = require('./schemas/ProductSchema');
+const User = require('./schemas/UserSchema');
+
+const getUsers = async () => {
+  return User.find();
+};
 
 const createUser = async ({ name, email, password }) => {
   try {
     const userExistent = await User.findOne({ email });
 
     if (userExistent) {
-      throw new Error("Acest email exista deja.");
+      throw new Error('Acest email exista deja.');
     }
 
     const codUnicDeVerificare = String(Date.now());
@@ -30,7 +34,7 @@ const userExists = async ({ email, password }) => {
     const user = await User.findOne({ email });
 
     if (!user || !user.validPassword(password)) {
-      throw new Error("Email sau parola gresita!");
+      throw new Error('Email sau parola gresita!');
     }
     return user;
   } catch (error) {
@@ -42,6 +46,10 @@ const updateUser = async (id, token) => {
   console.log(id, token);
   console.log(token);
   return User.findByIdAndUpdate({ _id: id }, { $set: token }, { new: true });
+};
+
+const getProducts = async () => {
+  return Product.find();
 };
 
 const calculateDailyRate = ({ currentWeight, height, age, desiredWeight }) => {
@@ -63,13 +71,13 @@ const getNotAllowedProducts = async ({ bloodType }) => {
   return products;
 };
 
-const notAllowedProductsObj = async (bloodType) => {
+const notAllowedProductsObj = async bloodType => {
   const notAllowedProductsArray = await getNotAllowedProducts(bloodType);
   const arr = [];
   notAllowedProductsArray.map(({ title }) => arr.push(title));
   let notAllowedProductsAll = [...new Set(arr)];
   let notAllowedProducts = [];
-  const message = ["You can eat everything"];
+  const message = ['You can eat everything'];
   if (notAllowedProductsAll[0] === undefined) {
     notAllowedProducts = message;
   } else {
@@ -77,7 +85,7 @@ const notAllowedProductsObj = async (bloodType) => {
       const index = Math.floor(Math.random() * notAllowedProductsAll.length);
       if (
         notAllowedProducts.includes(notAllowedProductsAll[index]) ||
-        notAllowedProducts.includes("undefined")
+        notAllowedProducts.includes('undefined')
       ) {
         break;
       } else {
@@ -97,7 +105,7 @@ const countCalories = async (productName, productWeight) => {
     title: productName,
   });
   if (!product) {
-    NotFound("Product name is not correct");
+    NotFound('Product name is not correct');
   }
   const { calories, weight } = product;
   const productCalories = Math.round((calories / weight) * productWeight);
@@ -105,10 +113,12 @@ const countCalories = async (productName, productWeight) => {
 };
 
 module.exports = {
+  getProducts,
+  notAllowedProductsObj,
+  calculateDailyRate,
+  getUsers,
   createUser,
   updateUser,
   userExists,
-  notAllowedProductsObj,
-  calculateDailyRate,
   countCalories,
 };
