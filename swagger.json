@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://app.swaggerhub.com/apis/Anisoara/Slim_API/1.0.0",
+      "url": "https://kbrd554-project.onrender.com",
       "description": "Production server (uses live data)"
     }
   ],
