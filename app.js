@@ -43,7 +43,7 @@ const PORT = process.env.PORT_SERVER || 4000;
 const URL_DB = process.env.URL_DB;
 
 mongoose
-  .connect("URL_DB")
+  .connect(URL_DB)
   .then(() => {
     console.log("Serverul MongoDB ruleaza");
     app.listen(PORT, () => {
