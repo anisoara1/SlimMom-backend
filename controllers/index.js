@@ -83,6 +83,66 @@ const userLogin = async (req, res, next) => {
   }
 };
 
+const getCurrent = async (req, res) => {
+  const { name, email, infouser } = req.body;
+  res.json({
+    status: "success",
+    code: 200,
+    data: {
+      user: {
+        name,
+        email,
+        infouser,
+      },
+    },
+  });
+};
+
+const updateById = async (req, res) => {
+  try {
+    const { _id } = req.body;
+    const {
+      currentWeight,
+      height,
+      age,
+      desiredWeight,
+      bloodType,
+      dailyRate,
+      notAllowedProducts,
+      notAllowedProductsAll,
+    } = req.body;
+    const result = await User.findByIdAndUpdate(
+      _id,
+      {
+        infouser: {
+          currentWeight,
+          height,
+          age,
+          desiredWeight,
+          bloodType,
+          dailyRate,
+          notAllowedProducts,
+          notAllowedProductsAll,
+        },
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      data: {
+        result,
+      },
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: 404,
+      error: error.message,
+    });
+  }
+};
+
 const userLogout = async (req, res, next) => {
   const userId = req.user;
   const token = null;
@@ -393,6 +453,8 @@ module.exports = {
   getUsers,
   userSignup,
   userLogin,
+  getCurrent,
+  updateById,
   userLogout,
   getProducts,
   getDailyRateController,
