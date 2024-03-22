@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const bCrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const gravatar = require("gravatar");
 
 const Schema = mongoose.Schema;
@@ -23,6 +23,9 @@ const userSchema = Schema(
     token: {
       type: String,
       default: null,
+    },
+    avatarUrl: {
+      type: String,
     },
     infouser: {
       currentWeight: {
@@ -66,17 +69,9 @@ userSchema.methods.comparePassword = function (password) {
   return bcrypt.compareSync(password, this.password);
 };
 
-userSchema.methods.setPassword = function (password) {
-  console.log(this);
-  this.password = bCrypt.hashSync(password, bCrypt.genSaltSync(6));
-};
-
-userSchema.methods.validPassword = function (password) {
-  return bCrypt.compareSync(password, this.password);
-};
-
-userSchema.methods.validPassword = function (password) {
-  return bCrypt.compareSync(password, this.password);
+userSchema.methods.setPassword = async function (password) {
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(password, salt);
 };
 
 userSchema.pre("save", function (next) {
@@ -94,6 +89,6 @@ userSchema.pre("save", function (next) {
   next();
 });
 
-const User = mongoose.model("users", userSchema);
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;

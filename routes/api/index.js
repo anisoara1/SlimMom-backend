@@ -12,8 +12,8 @@ router.get("/users", controller.getUsers);
 router.post("/users/signup", controller.userSignup);
 router.post("/users/login", controller.userLogin);
 router.get("/users/logout", auth, controller.userLogout);
-router.get("/users/current", /* auth, */ controller.getCurrent);
-router.patch("/users/infouser", /* auth, */ controller.updateById);
+router.get("/users/current", auth, controller.getCurrent);
+router.patch("/users/infouser", auth, controller.updateById);
 
 //Product routs
 router.get("/products", controller.getProducts);
@@ -22,8 +22,8 @@ router.post("/products", controller.getDailyRateController);
 router.post("/products/:userId", auth, controller.getDailyRateUserController);
 
 //Myproducts routs
-router.post("/myproducts/addProduct", controller.addMyProducts);
-router.delete("/myproducts/:productId", controller.deleteMyProducts);
-router.post("/myproducts/listMyProduct", controller.getMyProducts);
+router.post("/myProducts/addProduct", controller.addMyProducts);
+router.delete("/myProducts/:productId", controller.deleteMyProducts);
+router.post("/myProducts/listMyProduct", controller.getMyProducts);
 
 module.exports = router;

@@ -18,7 +18,7 @@ const params = {
 
 passport.use(
   new Strategy(params, function (payload, done) {
-    User.find({  _id: payload.id  })
+    User.find({ _id: payload.id })
       .then(([user]) => {
         if (!user || !user.token) {
           return done(new Error("Userul nu exista!"));

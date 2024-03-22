@@ -1,21 +1,37 @@
-const passport = require("passport");
+const jwt = require("jsonwebtoken");
+const User = require("../services/schemas/UserSchema");
+require("dotenv").config();
 
-const auth = (req, res, next) => {
-  passport.authenticate("jwt", { session: false }, (err, user) => {
-    if (!user || err || !user.token) {
-      return res.status(401).json({
-        status: "error",
-        code: 401,
-        message: "Unauthorized",
-        data: "Unauthorized",
-      });
+const { SECRET } = process.env;
+
+const auth = async (req, res, next) => {
+  const { authorization } = req.headers;
+
+  if (!authorization || !authorization.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const token = authorization.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user || token !== user.token) {
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
-    req.user = user.id;
+    req.user = user;
     next();
-  })(req, res, next);
+  } catch (error) {
+    if (
+      error.name === "TokenExpiredError" ||
+      error.name === "JsonWebTokenError"
+    ) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    next(error);
+  }
 };
 
-module.exports = {
-  auth,
-};
+module.exports = { auth };

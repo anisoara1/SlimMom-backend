@@ -143,22 +143,25 @@ const updateById = async (req, res) => {
   }
 };
 
-const userLogout = async (req, res, next) => {
-  const userId = req.user;
-  const token = null;
+const userLogout = async (req, res) => {
   try {
-    const result = await services.updateUser(userId, { token });
-    if (result) {
-      res.status(200).json({
-        status: "updated",
-        code: 200,
-        data: result,
-      });
-    }
+    // Get the user ID from the request (assuming it's stored in req.user)
+    const userId = req.user;
+
+    // Update the user's token to null to log them out
+    await User.findByIdAndUpdate(userId, { token: null });
+
+    // Send a success response
+    res.status(200).json({
+      status: "success",
+      message: "User successfully logged out",
+    });
   } catch (error) {
-    console.log(error);
-    res.status(404).json({
+    // Handle any errors
+    console.error("Logout error:", error);
+    res.status(500).json({
       status: "error",
+      message: "Internal Server Error",
     });
   }
 };
