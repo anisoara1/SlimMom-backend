@@ -11,7 +11,7 @@ router.get("/", (req, res) => {
 router.get("/users", controller.getUsers);
 router.post("/users/signup", controller.userSignup);
 router.post("/users/login", controller.userLogin);
-router.get("/users/logout", auth, controller.userLogout);
+router.post("/users/logout", auth, controller.userLogout);
 router.get("/users/current", auth, controller.getCurrent);
 router.patch("/users/infouser", auth, controller.updateById);
 

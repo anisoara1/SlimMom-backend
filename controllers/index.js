@@ -3,8 +3,10 @@ const jwt = require("jsonwebtoken");
 const User = require("../services/schemas/UserSchema");
 const Product = require("../services/schemas/ProductSchema");
 const MyProducts = require("../services/schemas/MyProductSchema");
+const { findUserName } = require("../services/index");
 const { error } = require("console");
 require("dotenv").config();
+const bcrypt = require("bcrypt");
 const secret = process.env.SECRET;
 exports.secret = secret;
 
@@ -28,15 +30,21 @@ const getUsers = async (req, res, next) => {
 const userSignup = async (req, res) => {
   const { name, email, password } = req.body;
   try {
+    const userExists = await User.findOne({ email });
+
+    if (userExists) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
     const result = await services.createUser({
       name,
       email,
-      password,
+      password: hashedPassword,
     });
     const payload = {
       id: result.id,
       email: result.email,
-      subscription: result.subscription,
     };
     const token = jwt.sign(payload, secret, { expiresIn: "1h" });
     await services.updateUser(result.id, { token });
@@ -63,7 +71,6 @@ const userLogin = async (req, res, next) => {
     const payload = {
       id: result.id,
       email: result.email,
-      subscription: result.subscription,
     };
     const token = jwt.sign(payload, secret, { expiresIn: "1h" });
     await services.updateUser(result.id, { token });
@@ -83,19 +90,34 @@ const userLogin = async (req, res, next) => {
   }
 };
 
-const getCurrent = async (req, res) => {
-  const { name, email, infouser } = req.body;
-  res.json({
-    status: "success",
-    code: 200,
-    data: {
-      user: {
-        name,
-        email,
-        infouser,
-      },
-    },
-  });
+const getCurrent = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res
+        .status(401)
+        .json({ status: "error", message: "Missing Authorization header" });
+    }
+    const token = authHeader.split(" ")[1];
+
+    const user = jwt.verify(token, secret);
+    console.log(user);
+    const result = await findUserName({ email: user.email });
+    console.log(result);
+    if (result) {
+      res.status(200).json({
+        status: "success",
+        code: 200,
+        data: { name: result.name, infouser: result.infouser },
+      });
+    } else {
+      res.status(404).json({ status: "error", message: "User not found" });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ status: "error", message: "Server error" });
+  }
 };
 
 const updateById = async (req, res) => {
@@ -145,19 +167,14 @@ const updateById = async (req, res) => {
 
 const userLogout = async (req, res) => {
   try {
-    // Get the user ID from the request (assuming it's stored in req.user)
     const userId = req.user;
-
-    // Update the user's token to null to log them out
     await User.findByIdAndUpdate(userId, { token: null });
 
-    // Send a success response
     res.status(200).json({
       status: "success",
       message: "User successfully logged out",
     });
   } catch (error) {
-    // Handle any errors
     console.error("Logout error:", error);
     res.status(500).json({
       status: "error",

@@ -33,18 +33,23 @@ const userExists = async ({ email, password }) => {
     console.log(`Parola:${password}`);
     const user = await User.findOne({ email });
 
-    if (!user || !user.validPassword(password)) {
+    if (!user || !(await user.comparePassword(password))) {
       throw new Error("Email sau parola gresita!");
     }
     return user;
   } catch (error) {
     console.log(error);
+    throw error;
   }
 };
 
 const findUserName = async (user) => {
-  const result = await User.findOne({ email: user.email });
-  return result;
+  try {
+    const result = await User.findOne({ email: user.email });
+    return result;
+  } catch (error) {
+    throw new Error("Error finding user by email");
+  }
 };
 
 const updateUser = async (id, token) => {

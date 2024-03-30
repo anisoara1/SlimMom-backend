@@ -8,17 +8,16 @@ const userSchema = Schema(
   {
     name: {
       type: String,
-      required: [true, "Name is required"],
+      required: true,
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: true,
       unique: true,
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
-      minlength: 6,
+      required: true,
     },
     token: {
       type: String,
