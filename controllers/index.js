@@ -74,9 +74,10 @@ const userLogin = async (req, res, next) => {
     };
     const token = jwt.sign(payload, secret, { expiresIn: "1h" });
     await services.updateUser(result.id, { token });
-    res.status(201).json({
-      status: "succes",
-      code: 201,
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
       data: {
         email: result.email,
         token,
@@ -109,7 +110,7 @@ const getCurrent = async (req, res, next) => {
       res.status(200).json({
         status: "success",
         code: 200,
-        data: { name: result.name, infouser: result.infouser },
+        data: { name: result.name, infouser: result.infouser, token },
       });
     } else {
       res.status(404).json({ status: "error", message: "User not found" });
