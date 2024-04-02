@@ -48,9 +48,10 @@ const userSignup = async (req, res) => {
     };
     const token = jwt.sign(payload, secret, { expiresIn: "1h" });
     await services.updateUser(result.id, { token });
+    
     res.status(201).json({
+       code: 201,
       status: "succes",
-      code: 201,
       data: { email: result.email, token, avatarUrl: result.avatarUrl },
     });
   } catch (error) {
@@ -81,6 +82,7 @@ const userLogin = async (req, res, next) => {
       data: {
         email: result.email,
         token,
+        avatarUrl: result.avatarUr
       },
     });
   } catch (error) {
