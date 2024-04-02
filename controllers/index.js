@@ -48,7 +48,7 @@ const userSignup = async (req, res) => {
     };
     const token = jwt.sign(payload, secret, { expiresIn: "1h" });
     await services.updateUser(result.id, { token });
-    
+
     res.status(201).json({
        code: 201,
       status: "succes",
@@ -82,7 +82,7 @@ const userLogin = async (req, res, next) => {
       data: {
         email: result.email,
         token,
-        avatarUrl: result.avatarUr
+        avatarUrl: result.avatarUrl
       },
     });
   } catch (error) {
@@ -112,7 +112,7 @@ const getCurrent = async (req, res, next) => {
       res.status(200).json({
         status: "success",
         code: 200,
-        data: { name: result.name, infouser: result.infouser, token },
+        data: { name: result.name, infouser: result.infouser, token, avatarUrl: result.avatarUrl },
       });
     } else {
       res.status(404).json({ status: "error", message: "User not found" });
