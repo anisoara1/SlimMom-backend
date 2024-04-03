@@ -50,7 +50,7 @@ const userSignup = async (req, res) => {
     await services.updateUser(result.id, { token });
 
     res.status(201).json({
-       code: 201,
+      code: 201,
       status: "succes",
       data: { email: result.email, token, avatarUrl: result.avatarUrl },
     });
@@ -82,7 +82,7 @@ const userLogin = async (req, res, next) => {
       data: {
         email: result.email,
         token,
-        avatarUrl: result.avatarUrl
+        avatarUrl: result.avatarUrl,
       },
     });
   } catch (error) {
@@ -112,7 +112,13 @@ const getCurrent = async (req, res, next) => {
       res.status(200).json({
         status: "success",
         code: 200,
-        data: { name: result.name, infouser: result.infouser, token, avatarUrl: result.avatarUrl },
+        data: {
+          _id: result.id,
+          name: result.name,
+          infouser: result.infouser,
+          token,
+          avatarUrl: result.avatarUrl,
+        },
       });
     } else {
       res.status(404).json({ status: "error", message: "User not found" });
@@ -222,14 +228,29 @@ const getDailyRateController = async (req, res, next) => {
   }
 };
 
-const notAllowedProducts = async (bloodType) => {
+const notAllowedProducts = async (req, res, next) => {
   try {
-    const notAllowedProductsArray = await services.findBloodType(bloodType);
+    const bloodType = req.body.bloodType;
+
+    // Fetch data directly (replace this with your data fetching mechanism)
+    const notAllowedProductsArray = [
+      { title: "Product 1" },
+      { title: "Product 2" },
+      { title: "Product 3" },
+      // Add more data as needed
+    ];
+
     const arr = [];
-    notAllowedProductsArray.map(({ title }) => arr.push(title.ua));
+
+    // Map over the array and push titles to 'arr'
+    notAllowedProductsArray.forEach(({ title }) => arr.push(title));
+
+    // Remove duplicates from 'arr'
     let notAllowedProductsAll = [...new Set(arr)];
     let notAllowedProducts = [];
     const message = ["You can eat everything"];
+
+    // Set 'notAllowedProducts' based on conditions
     if (notAllowedProductsAll[0] === undefined) {
       notAllowedProducts = message;
     } else {
@@ -241,16 +262,21 @@ const notAllowedProducts = async (bloodType) => {
         ) {
           break;
         } else {
-          notAllowedProducts.push(notAllowedProductsAll[index]);
+          notAllowedProducts.push(notNotAllowedProductsAll[index]);
         }
       } while (notAllowedProducts.length !== 5);
     }
+
+    // Update 'notAllowedProductsAll' based on conditions
     if (notAllowedProductsAll.length === 0) {
       notAllowedProductsAll = message;
     }
+
+    // Prepare and return the result
     const result = { notAllowedProductsAll, notAllowedProducts };
     return result;
   } catch (error) {
+    // Handle errors
     res.status(404).json({
       status: "error",
       code: 404,
