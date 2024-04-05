@@ -55,7 +55,7 @@ const userSchema = Schema(
         type: [String],
         default: null,
       },
-      notAllowedProductsAll: {
+      allowedProductsAll: {
         type: [String],
         default: null,
       },

@@ -140,7 +140,7 @@ const updateById = async (req, res) => {
       bloodType,
       dailyRate,
       notAllowedProducts,
-      notAllowedProductsAll,
+      allowedProductsAll,
     } = req.body;
     const result = await User.findByIdAndUpdate(
       _id,
@@ -153,7 +153,7 @@ const updateById = async (req, res) => {
           bloodType,
           dailyRate,
           notAllowedProducts,
-          notAllowedProductsAll,
+          allowedProductsAll,
         },
       },
       { new: true }
@@ -194,18 +194,37 @@ const userLogout = async (req, res) => {
 
 const getProducts = async (req, res, next) => {
   try {
-    const results = await services.getProducts();
-    res.json({
-      status: "Success",
-      code: 200,
-      data: results,
-    });
+    const { bloodType } = req.body;
+
+    await User.updateMany(
+      {},
+      { $set: { "infouser.bloodType": bloodType } },
+      { new: true }
+    );
+    const notAllowedProducts = await Product.find({
+      [`groupBloodNotAllowed.${bloodType}`]: true,
+    })
+      .select("title")
+      .limit(5);
+    const allowedProductsAll = await Product.find({
+      [`groupBloodNotAllowed.${bloodType}`]: false,
+    }).select("title");
+    const message = ["You can eat everything"];
+    const users = await User.find();
+    const responseData = users.map((user) => ({
+      _id: user._id,
+      infouser: {
+        ...user.infouser,
+        notAllowedProducts: notAllowedProducts.length
+          ? notAllowedProducts
+          : message,
+        allowedProductsAll: allowedProductsAll,
+      },
+    }));
+    res.status(200).json(responseData);
   } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
-    });
-    next(error);
+    console.error("Error fetching not allowed products:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -214,69 +233,12 @@ const getDailyRateController = async (req, res, next) => {
     console.log(req.body);
     const dailyRate = services.calculateDailyRate(req.body);
     console.log(req.body.bloodType);
-    const { notAllowedProducts, notAllowedProductsAll } =
+    const { notAllowedProducts, allowedProductsAll } =
       await services.notAllowedProductsObj(req.body.bloodType);
     return res
       .status(200)
-      .json({ dailyRate, notAllowedProducts, notAllowedProductsAll });
+      .json({ dailyRate, notAllowedProducts, allowedProductsAll });
   } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
-    });
-    next(error);
-  }
-};
-
-const notAllowedProducts = async (req, res, next) => {
-  try {
-    const bloodType = req.body.bloodType;
-
-    // Fetch data directly (replace this with your data fetching mechanism)
-    const notAllowedProductsArray = [
-      { title: "Product 1" },
-      { title: "Product 2" },
-      { title: "Product 3" },
-      // Add more data as needed
-    ];
-
-    const arr = [];
-
-    // Map over the array and push titles to 'arr'
-    notAllowedProductsArray.forEach(({ title }) => arr.push(title));
-
-    // Remove duplicates from 'arr'
-    let notAllowedProductsAll = [...new Set(arr)];
-    let notAllowedProducts = [];
-    const message = ["You can eat everything"];
-
-    // Set 'notAllowedProducts' based on conditions
-    if (notAllowedProductsAll[0] === undefined) {
-      notAllowedProducts = message;
-    } else {
-      do {
-        const index = Math.floor(Math.random() * notAllowedProductsAll.length);
-        if (
-          notAllowedProducts.includes(notAllowedProductsAll[index]) ||
-          notAllowedProducts.includes("undefined")
-        ) {
-          break;
-        } else {
-          notAllowedProducts.push(notNotAllowedProductsAll[index]);
-        }
-      } while (notAllowedProducts.length !== 5);
-    }
-
-    // Update 'notAllowedProductsAll' based on conditions
-    if (notAllowedProductsAll.length === 0) {
-      notAllowedProductsAll = message;
-    }
-
-    // Prepare and return the result
-    const result = { notAllowedProductsAll, notAllowedProducts };
-    return result;
-  } catch (error) {
-    // Handle errors
     res.status(404).json({
       status: "error",
       code: 404,
@@ -290,8 +252,9 @@ const getDailyRateUserController = async (req, res) => {
     const { user } = req;
     const dailyRate = services.calculateDailyRate(user.infouser);
     console.log(dailyRate);
+
     const { notAllowedProducts, notAllowedProductsAll } =
-      await services.notAllowedProductsObj(user.infouser.bloodType);
+      await services.notAllowedProducts(user.infouser.bloodType);
     user.infouser = {
       ...user.infouser,
       dailyRate,
@@ -507,7 +470,7 @@ module.exports = {
   userLogout,
   getProducts,
   getDailyRateController,
-  notAllowedProducts,
+  getProducts,
   getAllProductsByQuery,
   getDailyRateUserController,
   addMyProducts,
