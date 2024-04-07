@@ -16,7 +16,7 @@ router.get("/users/current", auth, controller.getCurrent);
 router.patch("/users/infouser", auth, controller.updateById);
 
 //Product routs
-router.post("/products/getProducts", auth, controller.getProducts);
+router.post("/users/getProducts", auth, controller.getProducts);
 router.get("/products/searchProducts", controller.getAllProductsByQuery);
 router.post("/products", controller.getDailyRateController);
 router.post("/products/:userId", auth, controller.getDailyRateUserController);

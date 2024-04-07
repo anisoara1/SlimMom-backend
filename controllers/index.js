@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../services/schemas/UserSchema");
 const Product = require("../services/schemas/ProductSchema");
 const MyProducts = require("../services/schemas/MyProductSchema");
-const { findUserName } = require("../services/index");
+const { findUserName, userBloodType } = require("../services/index");
 const { error } = require("console");
 require("dotenv").config();
 const bcrypt = require("bcrypt");
@@ -131,45 +131,33 @@ const getCurrent = async (req, res, next) => {
 
 const updateById = async (req, res) => {
   try {
-    const { _id } = req.body;
-    const {
-      currentWeight,
-      height,
-      age,
-      desiredWeight,
-      bloodType,
-      dailyRate,
-      notAllowedProducts,
-      allowedProductsAll,
-    } = req.body;
+    const { _id, ...updateData } = req.body;
     const result = await User.findByIdAndUpdate(
       _id,
-      {
-        infouser: {
-          currentWeight,
-          height,
-          age,
-          desiredWeight,
-          bloodType,
-          dailyRate,
-          notAllowedProducts,
-          allowedProductsAll,
-        },
-      },
+      { infouser: updateData },
       { new: true }
     );
+
+    if (!result) {
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "User not found",
+      });
+    }
 
     res.status(200).json({
       status: "success",
       code: 200,
       data: {
-        result,
+        user: result,
       },
     });
   } catch (error) {
-    res.status(404).json({
-      status: 404,
-      error: error.message,
+    console.error("Error updating user:", error);
+    res.status(500).json({
+      status: 500,
+      error: "Internal server error",
     });
   }
 };
@@ -194,37 +182,70 @@ const userLogout = async (req, res) => {
 
 const getProducts = async (req, res, next) => {
   try {
-    const { bloodType } = req.body;
+    const bloodType = await services.userBloodType(req.user);
+    console.log(bloodType);
 
-    await User.updateMany(
-      {},
-      { $set: { "infouser.bloodType": bloodType } },
-      { new: true }
-    );
+    const userId = req.user._id;
+
     const notAllowedProducts = await Product.find({
       [`groupBloodNotAllowed.${bloodType}`]: true,
     })
       .select("title")
       .limit(5);
+
     const allowedProductsAll = await Product.find({
       [`groupBloodNotAllowed.${bloodType}`]: false,
     }).select("title");
+
     const message = ["You can eat everything"];
-    const users = await User.find();
-    const responseData = users.map((user) => ({
-      _id: user._id,
-      infouser: {
-        ...user.infouser,
-        notAllowedProducts: notAllowedProducts.length
-          ? notAllowedProducts
-          : message,
-        allowedProductsAll: allowedProductsAll,
+
+    const result = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          "infouser.notAllowedProducts": notAllowedProducts.length
+            ? notAllowedProducts.map((product) => product.title)
+            : message,
+          "infouser.allowedProductsAll": allowedProductsAll.map(
+            (product) => product.title
+          ),
+        },
       },
-    }));
-    res.status(200).json(responseData);
+      {
+        new: true,
+      }
+    );
+
+    if (!result) {
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "User not found",
+      });
+    }
+    const { infouser, ...userData } = result.toObject();
+    const response = {
+      ...userData,
+      infouser: {
+        ...infouser,
+        allowedProductsAll: infouser.allowedProductsAll,
+        notAllowedProducts: infouser.notAllowedProducts,
+      },
+    };
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      data: {
+        user: response,
+      },
+    });
   } catch (error) {
-    console.error("Error fetching not allowed products:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error updating user:", error);
+    res.status(500).json({
+      status: 500,
+      error: "Internal server error",
+    });
   }
 };
 

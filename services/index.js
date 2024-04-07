@@ -62,6 +62,22 @@ const getProducts = async () => {
   return Product.find();
 };
 
+const userBloodType = async (user) => {
+  try {
+    const result = await User.findOne({ bloodType: user.infouser.bloodType });
+    if (!user) {
+      console.log("User not found");
+      return null;
+    }
+    const bloodType = user.infouser.bloodType;
+
+    return bloodType;
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    throw error;
+  }
+};
+
 const calculateDailyRate = ({ currentWeight, height, age, desiredWeight }) => {
   return Math.floor(
     10 * currentWeight +
@@ -124,6 +140,7 @@ const countCalories = async (productName, productWeight) => {
 
 module.exports = {
   getProducts,
+  userBloodType,
   notAllowedProductsObj,
   calculateDailyRate,
   getUsers,
