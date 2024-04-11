@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../services/schemas/UserSchema");
 const Product = require("../services/schemas/ProductSchema");
 const MyProducts = require("../services/schemas/MyProductSchema");
-const { findUserName, userBloodType } = require("../services/index");
+const { findUserName, calculateDailyRate } = require("../services/index");
 const { error } = require("console");
 require("dotenv").config();
 const bcrypt = require("bcrypt");
@@ -132,9 +132,27 @@ const getCurrent = async (req, res, next) => {
 const updateById = async (req, res) => {
   try {
     const { _id, ...updateData } = req.body;
+    const { currentWeight, height, age, desiredWeight } = req.body;
+    console.log(req.body);
+    // Calculate daily rate
+    const dailyRate = await services.calculateDailyRate({
+      currentWeight,
+      height,
+      age,
+      desiredWeight,
+    });
+    console.log(dailyRate);
+
+    const updatedInfouser = {
+      dailyRate: dailyRate,
+      ...updateData,
+    };
+    // Include daily rate in updateData
+
+    // Update user document
     const result = await User.findByIdAndUpdate(
       _id,
-      { infouser: updateData },
+      { infouser: updatedInfouser }, // Only update the infouser field
       { new: true }
     );
 
@@ -187,6 +205,7 @@ const getProducts = async (req, res, next) => {
 
     const userId = req.user._id;
 
+    // Retrieve not allowed products and allowed products
     const notAllowedProducts = await Product.find({
       [`groupBloodNotAllowed.${bloodType}`]: true,
     })
@@ -195,7 +214,7 @@ const getProducts = async (req, res, next) => {
 
     const allowedProductsAll = await Product.find({
       [`groupBloodNotAllowed.${bloodType}`]: false,
-    }).select("title");
+    }).select("title weight calories");
 
     const message = ["You can eat everything"];
 
@@ -206,15 +225,19 @@ const getProducts = async (req, res, next) => {
           "infouser.notAllowedProducts": notAllowedProducts.length
             ? notAllowedProducts.map((product) => product.title)
             : message,
-          "infouser.allowedProductsAll": allowedProductsAll.map(
-            (product) => product.title
-          ),
+          "infouser.allowedProductsAll": allowedProductsAll.map((product) => ({
+            title: product.title,
+            weight: product.weight,
+            calories: product.calories,
+          })),
         },
       },
       {
         new: true,
       }
     );
+
+    // Calculate daily rate
 
     if (!result) {
       return res.status(404).json({
@@ -233,6 +256,7 @@ const getProducts = async (req, res, next) => {
       },
     };
 
+    // Send response
     res.status(200).json({
       status: "success",
       code: 200,
@@ -242,6 +266,92 @@ const getProducts = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error updating user:", error);
+    res.status(500).json({
+      status: 500,
+      error: "Internal server error",
+    });
+  }
+};
+
+const infoProducts = async (req, res, next) => {
+  try {
+    // Retrieve all products
+    const allProducts = await Product.find({});
+
+    // Check if there are products
+    if (!allProducts || allProducts.length === 0) {
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "No products found",
+      });
+    }
+
+    // Send response with products
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      data: {
+        products: allProducts,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({
+      status: 500,
+      error: "Internal server error",
+    });
+  }
+};
+
+const allowedProductsInfo = async (req, res, next) => {
+  try {
+    const owner = req.user._id;
+    const allowedProductsAll = req.user.infouser.allowedProductsAll;
+
+    console.log("Owner:", req.user._id);
+    console.log("allowedProductsAll:", allowedProductsAll);
+
+    // Check if there are allowed products
+    if (!allowedProductsAll || allowedProductsAll.length === 0) {
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "No allowed products found for the user",
+      });
+    }
+
+    // Check each product object for completeness
+    const isValidProduct = (product) =>
+      product &&
+      product._id &&
+      product.weight &&
+      product.title &&
+      product.calories;
+
+    // Filter out invalid products
+    const validProducts = allowedProductsAll.filter(isValidProduct);
+
+    // Save each valid product to the myproducts collection
+    const savedProducts = await MyProducts.insertMany(
+      validProducts.map((product) => ({
+        owner: owner,
+        title: product.title,
+        weight: product.weight,
+        calories: product.calories,
+      }))
+    );
+
+    // Send response with saved product data
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      data: {
+        allowedProductsAll: savedProducts,
+      },
+    });
+  } catch (error) {
+    console.error("Error saving allowed products:", error);
     res.status(500).json({
       status: 500,
       error: "Internal server error",
@@ -490,6 +600,8 @@ module.exports = {
   updateById,
   userLogout,
   getProducts,
+  infoProducts,
+  allowedProductsInfo,
   getDailyRateController,
   getProducts,
   getAllProductsByQuery,

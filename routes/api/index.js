@@ -17,8 +17,12 @@ router.patch("/users/infouser", auth, controller.updateById);
 
 //Product routs
 router.post("/users/getProducts", auth, controller.getProducts);
-router.get("/products/searchProducts", controller.getAllProductsByQuery);
-router.post("/products", controller.getDailyRateController);
+router.get("/products/infoProducts", controller.infoProducts);
+router.post(
+  "/products/allowedProductsInfo",
+  auth,
+  controller.allowedProductsInfo
+);
 router.post("/products/:userId", auth, controller.getDailyRateUserController);
 
 //Myproducts routs

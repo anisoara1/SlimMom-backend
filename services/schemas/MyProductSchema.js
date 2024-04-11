@@ -1,32 +1,34 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const productSchema = new Schema({
-  productInfo: [
+  allowedProductsAll: [
     {
-      productWeight: {
+      title: {
         type: String,
+        required: true,
       },
-      productCalories: {
-        type: String,
+      weight: {
+        type: Number,
+        required: true,
       },
-      productName: {
-        type: String,
-        required: [true, 'productName is required'],
+      calories: {
+        type: Number,
+        required: true,
       },
     },
   ],
   date: {
-    type: String,
-    required: [true, 'Date is required'],
+    type: Date,
+    default: Date.now,
   },
   owner: {
     type: Schema.Types.ObjectId,
     required: true,
-    ref: 'user',
+    ref: "User",
   },
 });
 
-const MyProducts = mongoose.model('myproducts', productSchema);
+const MyProducts = mongoose.model("myproducts", productSchema);
 
 module.exports = MyProducts;

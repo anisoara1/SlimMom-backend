@@ -56,11 +56,22 @@ const userSchema = Schema(
         default: null,
       },
       allowedProductsAll: {
-        type: [String],
-        default: null,
+        title: {
+          type: String,
+          default: "Default Title",
+        },
+        weight: {
+          type: Number,
+          default: 0,
+        },
+        calories: {
+          type: Number,
+          default: 0,
+        },
       },
     },
   },
+
   { versionKey: false, timestamps: true }
 );
 
