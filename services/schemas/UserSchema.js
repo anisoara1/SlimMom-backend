@@ -52,23 +52,27 @@ const userSchema = Schema(
         default: null,
       },
       notAllowedProducts: {
-        type: [String],
-        default: null,
-      },
-      allowedProductsAll: {
-        title: {
-          type: String,
-          default: "Default Title",
-        },
-        weight: {
-          type: Number,
-          default: 0,
-        },
-        calories: {
-          type: Number,
-          default: 0,
+        categories: {
+          type: [String],
+          default: "Default Categories",
         },
       },
+      allowedProductsAll: [
+        {
+          title: {
+            type: String,
+            default: "Default Title",
+          },
+          weight: {
+            type: Number,
+            default: 0,
+          },
+          calories: {
+            type: Number,
+            default: 0,
+          },
+        },
+      ],
     },
   },
 

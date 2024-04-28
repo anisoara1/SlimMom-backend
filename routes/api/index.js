@@ -14,20 +14,11 @@ router.post("/users/login", controller.userLogin);
 router.post("/users/logout", auth, controller.userLogout);
 router.get("/users/current", auth, controller.getCurrent);
 router.patch("/users/infouser", auth, controller.updateById);
-
-//Product routs
 router.post("/users/getProducts", auth, controller.getProducts);
-router.get("/products/infoProducts", controller.infoProducts);
-router.post(
-  "/products/allowedProductsInfo",
-  auth,
-  controller.allowedProductsInfo
-);
-router.post("/products/:userId", auth, controller.getDailyRateUserController);
 
 //Myproducts routs
-router.post("/myProducts/addProduct", controller.addMyProducts);
-router.delete("/myProducts/:productId", controller.deleteMyProducts);
-router.post("/myProducts/listMyProduct", controller.getMyProducts);
+
+router.post("/myproducts/saveProductData", auth, controller.saveProductData);
+router.delete("/myproducts/:productId", auth, controller.removeProduct);
 
 module.exports = router;

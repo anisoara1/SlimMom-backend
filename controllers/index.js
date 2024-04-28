@@ -9,6 +9,7 @@ require("dotenv").config();
 const bcrypt = require("bcrypt");
 const secret = process.env.SECRET;
 exports.secret = secret;
+const mongoose = require("mongoose");
 
 const getUsers = async (req, res, next) => {
   try {
@@ -46,7 +47,7 @@ const userSignup = async (req, res) => {
       id: result.id,
       email: result.email,
     };
-    const token = jwt.sign(payload, secret, { expiresIn: "1h" });
+    const token = jwt.sign(payload, secret, { expiresIn: "10h" });
     await services.updateUser(result.id, { token });
 
     res.status(201).json({
@@ -73,7 +74,7 @@ const userLogin = async (req, res, next) => {
       id: result.id,
       email: result.email,
     };
-    const token = jwt.sign(payload, secret, { expiresIn: "1h" });
+    const token = jwt.sign(payload, secret, { expiresIn: "10h" });
     await services.updateUser(result.id, { token });
 
     res.status(200).json({
@@ -134,7 +135,6 @@ const updateById = async (req, res) => {
     const { _id, ...updateData } = req.body;
     const { currentWeight, height, age, desiredWeight } = req.body;
     console.log(req.body);
-    // Calculate daily rate
     const dailyRate = await services.calculateDailyRate({
       currentWeight,
       height,
@@ -147,12 +147,10 @@ const updateById = async (req, res) => {
       dailyRate: dailyRate,
       ...updateData,
     };
-    // Include daily rate in updateData
 
-    // Update user document
     const result = await User.findByIdAndUpdate(
       _id,
-      { infouser: updatedInfouser }, // Only update the infouser field
+      { infouser: updatedInfouser },
       { new: true }
     );
 
@@ -205,11 +203,10 @@ const getProducts = async (req, res, next) => {
 
     const userId = req.user._id;
 
-    // Retrieve not allowed products and allowed products
     const notAllowedProducts = await Product.find({
       [`groupBloodNotAllowed.${bloodType}`]: true,
     })
-      .select("title")
+      .select("categories")
       .limit(5);
 
     const allowedProductsAll = await Product.find({
@@ -217,13 +214,16 @@ const getProducts = async (req, res, next) => {
     }).select("title weight calories");
 
     const message = ["You can eat everything"];
-
     const result = await User.findByIdAndUpdate(
       userId,
       {
         $set: {
           "infouser.notAllowedProducts": notAllowedProducts.length
-            ? notAllowedProducts.map((product) => product.title)
+            ? [
+                ...new Set(
+                  notAllowedProducts.flatMap((product) => product.categories)
+                ),
+              ]
             : message,
           "infouser.allowedProductsAll": allowedProductsAll.map((product) => ({
             title: product.title,
@@ -236,9 +236,6 @@ const getProducts = async (req, res, next) => {
         new: true,
       }
     );
-
-    // Calculate daily rate
-
     if (!result) {
       return res.status(404).json({
         status: "error",
@@ -256,7 +253,6 @@ const getProducts = async (req, res, next) => {
       },
     };
 
-    // Send response
     res.status(200).json({
       status: "success",
       code: 200,
@@ -273,322 +269,94 @@ const getProducts = async (req, res, next) => {
   }
 };
 
-const infoProducts = async (req, res, next) => {
+const saveProductData = async (req, res) => {
   try {
-    // Retrieve all products
-    const allProducts = await Product.find({});
+    const { product, quantity } = req.body;
+    console.log("reqBody:", req.body);
 
-    // Check if there are products
-    if (!allProducts || allProducts.length === 0) {
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "No products found",
-      });
-    }
-
-    // Send response with products
-    res.status(200).json({
-      status: "success",
-      code: 200,
-      data: {
-        products: allProducts,
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    res.status(500).json({
-      status: 500,
-      error: "Internal server error",
-    });
-  }
-};
-
-const allowedProductsInfo = async (req, res, next) => {
-  try {
-    const owner = req.user._id;
-    const allowedProductsAll = req.user.infouser.allowedProductsAll;
-
-    console.log("Owner:", req.user._id);
-    console.log("allowedProductsAll:", allowedProductsAll);
-
-    // Check if there are allowed products
-    if (!allowedProductsAll || allowedProductsAll.length === 0) {
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "No allowed products found for the user",
-      });
-    }
-
-    // Check each product object for completeness
-    const isValidProduct = (product) =>
-      product &&
-      product._id &&
-      product.weight &&
-      product.title &&
-      product.calories;
-
-    // Filter out invalid products
-    const validProducts = allowedProductsAll.filter(isValidProduct);
-
-    // Save each valid product to the myproducts collection
-    const savedProducts = await MyProducts.insertMany(
-      validProducts.map((product) => ({
-        owner: owner,
-        title: product.title,
-        weight: product.weight,
-        calories: product.calories,
-      }))
+    const selectedProduct = req.user.infouser.allowedProductsAll.find(
+      (item) => item.title === product
     );
 
-    // Send response with saved product data
-    res.status(200).json({
-      status: "success",
-      code: 200,
-      data: {
-        allowedProductsAll: savedProducts,
-      },
-    });
-  } catch (error) {
-    console.error("Error saving allowed products:", error);
-    res.status(500).json({
-      status: 500,
-      error: "Internal server error",
-    });
-  }
-};
-
-const getDailyRateController = async (req, res, next) => {
-  try {
-    console.log(req.body);
-    const dailyRate = services.calculateDailyRate(req.body);
-    console.log(req.body.bloodType);
-    const { notAllowedProducts, allowedProductsAll } =
-      await services.notAllowedProductsObj(req.body.bloodType);
-    return res
-      .status(200)
-      .json({ dailyRate, notAllowedProducts, allowedProductsAll });
-  } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
-    });
-    next(error);
-  }
-};
-
-const getDailyRateUserController = async (req, res) => {
-  try {
-    const { user } = req;
-    const dailyRate = services.calculateDailyRate(user.infouser);
-    console.log(dailyRate);
-
-    const { notAllowedProducts, notAllowedProductsAll } =
-      await services.notAllowedProducts(user.infouser.bloodType);
-    user.infouser = {
-      ...user.infouser,
-      dailyRate,
-      notAllowedProducts,
-      notAllowedProductsAll,
-    };
-    await User.findByIdAndUpdate(user._id, user);
-    return res.status(200).json({ data: user.infouser });
-  } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
-    });
-  }
-};
-
-const getAllProductsByQuery = async (req, res, next) => {
-  try {
-    const {
-      query: { title, limit = 10 },
-    } = req;
-    const titleFromUrl = decodeURI(title).trim();
-    const products = await Product.find({
-      $or: [{ $text: { $search: titleFromUrl } }],
-    }).limit(limit);
-    if (products.length === 0) {
-      const newProducts = await Product.find({
-        $or: [{ title: { $regex: titleFromUrl, $options: "i" } }],
-      }).limit(limit);
-
-      if (newProducts.length === 0) {
-        return error;
-      }
-      return res.status(200).json({ data: newProducts });
+    console.log("selectedProduct:", selectedProduct);
+    if (!selectedProduct) {
+      return res.status(404).json({ error: "Product not found" });
     }
-    return res.status(200).json({ data: products });
-  } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
+    const productCalories = selectedProduct.calories;
+    const totalCalories = (productCalories * quantity) / 100;
+
+    // Find or create the document for the owner
+    let existingDocument = await MyProducts.findOne({ owner: req.user._id });
+    console.log("Existing document:", existingDocument);
+    if (!existingDocument) {
+      console.log(
+        "No existing document found for the owner. Creating a new one..."
+      );
+      const newDocumentData = {
+        owner: req.user._id,
+        products: [], // Initialize products array
+      };
+      existingDocument = await MyProducts.create(newDocumentData);
+      console.log("New document created:", existingDocument);
+    }
+
+    // Add the new product to the products array
+    existingDocument.products.push({
+      product: product,
+      quantity: quantity,
+      newCalories: totalCalories,
     });
-    next(error);
+
+    // Save the updated document with the new product
+    const updatedDocument = await existingDocument.save();
+    console.log("Updated document:", updatedDocument);
+
+    res.status(200).json(updatedDocument);
+  } catch (error) {
+    console.error("Error adding product:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
-const addMyProducts = async (req, res) => {
-  try {
-    console.log(req.user);
-    const { _id } = req.user;
-    const { productName, productWeight, date } = req.body;
-    console.log(req.body);
-    const productCalories = await services.countCalories(
-      productName,
-      productWeight
-    );
-    const product = await MyProducts.findOne({
-      date,
-      owner: _id,
-      productInfo: { $elemMatch: { productName } },
-    });
-    if (product) {
-      const index = product.productInfo.findIndex(
-        (product) => product.productName === productName
-      );
-      const newWeight =
-        Number(product.productInfo[index].productWeight) +
-        Number(productWeight);
-      const newCalories =
-        Number(product.productInfo[index].productCalories) +
-        Number(productCalories);
-      await MyProducts.findOneAndUpdate(
-        { date, owner: _id },
-        {
-          $pull: {
-            productInfo: { productName },
-          },
-        }
-      );
-      await MyProducts.findOneAndUpdate(
-        { date, owner: _id },
-        {
-          $push: {
-            productInfo: {
-              $each: [
-                {
-                  productCalories: newCalories.toString(),
-                  productName,
-                  productWeight: newWeight.toString(),
-                },
-              ],
-              $position: 0,
-            },
-          },
-        }
-      );
-      const newProduct = await MyProducts.findOne({
-        date,
-        owner: _id,
-      });
-
-      return res
-        .status(201)
-        .json({ success: "success", code: 201, newProduct });
-    }
-    if (await MyProducts.findOne({ date, owner: _id })) {
-      await MyProducts.findOneAndUpdate(
-        { date, owner: _id },
-        {
-          $push: {
-            productInfo: {
-              $each: [
-                {
-                  productCalories,
-                  productName,
-                  productWeight,
-                },
-              ],
-              $position: 0,
-            },
-          },
-        }
-      );
-      const newProduct = await MyProducts.findOne({
-        date,
-        owner: _id,
-      });
-
-      return res
-        .status(201)
-        .json({ success: "success", code: 201, newProduct });
-    }
-    const newProduct = await MyProducts.create({
-      date,
-      owner: _id,
-      productInfo: [{ productCalories, productName, productWeight }],
-    });
-    return res.status(201).json({
-      success: "success",
-      code: 201,
-      newProduct,
-    });
-  } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
-    });
-  }
-};
-
-const deleteMyProducts = async (req, res) => {
+const removeProduct = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { date } = req.body;
-    const { _id } = req.user;
+    console.log("req.params:", req.params);
+    console.log("req.user :", req.user);
 
-    const product = await MyProducts.findOneAndUpdate(
-      { date, productInfo: { $elemMatch: { _id: productId } } },
-      {
-        $pull: {
-          productInfo: { _id: productId },
-        },
-      }
-    );
+    // Find the document for the owner
+    const existingDocument = await MyProducts.findOne({ owner: req.user._id });
+    console.log("Existing document:", existingDocument);
 
-    if (product.productInfo.length === 0) {
-      await MyProducts.findOneAndDelete({ date });
+    // Check if the document exists
+    if (!existingDocument) {
+      return res
+        .status(404)
+        .json({ error: "Document not found for the owner" });
     }
 
-    if (!product) {
-      NotFound(`Product with id = ${productId} not found`);
+    const productIndex = existingDocument.products.findIndex((product) => {
+      // Convert productId to ObjectId for comparison
+      return product._id.equals(new mongoose.Types.ObjectId(productId));
+    });
+
+    if (productIndex === -1) {
+      return res
+        .status(404)
+        .json({ error: "Product not found in the document" });
     }
 
-    const newProduct = await MyProducts.findOne({
-      date,
-      owner: _id,
-    });
+    // Remove the product from the products array
+    existingDocument.products.splice(productIndex, 1);
 
-    return res.status(200).json({
-      status: "success",
-      code: 200,
-      newProduct,
-    });
+    // Save the updated document without the removed product
+    const updatedDocument = await existingDocument.save();
+    console.log("Updated document:", updatedDocument);
+
+    res.status(200).json(updatedDocument);
   } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
-    });
-  }
-};
-
-const getMyProducts = async (req, res) => {
-  try {
-    const { date } = req.body;
-    const { _id } = req.user;
-
-    const productList = await MyProducts.find({ owner: _id, date });
-    console.log(productList);
-    return res.status(200).json({ status: "success", code: 200, productList });
-  } catch (error) {
-    res.status(404).json({
-      status: "error",
-      code: 404,
-    });
+    console.error("Error removing product:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -600,13 +368,7 @@ module.exports = {
   updateById,
   userLogout,
   getProducts,
-  infoProducts,
-  allowedProductsInfo,
-  getDailyRateController,
-  getProducts,
-  getAllProductsByQuery,
-  getDailyRateUserController,
-  addMyProducts,
-  deleteMyProducts,
-  getMyProducts,
+  saveProductData,
+
+  removeProduct,
 };
