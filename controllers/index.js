@@ -108,6 +108,8 @@ const getCurrent = async (req, res, next) => {
     const user = jwt.verify(token, secret);
     console.log(user);
     const result = await findUserName({ email: user.email });
+    const updatedAt = user.updatedAt;
+    console.log(updatedAt);
     console.log(result);
     if (result) {
       res.status(200).json({
@@ -119,6 +121,7 @@ const getCurrent = async (req, res, next) => {
           infouser: result.infouser,
           token,
           avatarUrl: result.avatarUrl,
+          currentDate: result.updatedAt,
         },
       });
     } else {
@@ -285,7 +288,6 @@ const saveProductData = async (req, res) => {
     const productCalories = selectedProduct.calories;
     const totalCalories = (productCalories * quantity) / 100;
 
-    // Find or create the document for the owner
     let existingDocument = await MyProducts.findOne({ owner: req.user._id });
     console.log("Existing document:", existingDocument);
     if (!existingDocument) {
@@ -294,20 +296,19 @@ const saveProductData = async (req, res) => {
       );
       const newDocumentData = {
         owner: req.user._id,
-        products: [], // Initialize products array
+        products: [],
+        y,
       };
       existingDocument = await MyProducts.create(newDocumentData);
       console.log("New document created:", existingDocument);
     }
 
-    // Add the new product to the products array
     existingDocument.products.push({
       product: product,
       quantity: quantity,
       newCalories: totalCalories,
     });
 
-    // Save the updated document with the new product
     const updatedDocument = await existingDocument.save();
     console.log("Updated document:", updatedDocument);
 
@@ -324,11 +325,9 @@ const removeProduct = async (req, res) => {
     console.log("req.params:", req.params);
     console.log("req.user :", req.user);
 
-    // Find the document for the owner
     const existingDocument = await MyProducts.findOne({ owner: req.user._id });
     console.log("Existing document:", existingDocument);
 
-    // Check if the document exists
     if (!existingDocument) {
       return res
         .status(404)
@@ -336,7 +335,6 @@ const removeProduct = async (req, res) => {
     }
 
     const productIndex = existingDocument.products.findIndex((product) => {
-      // Convert productId to ObjectId for comparison
       return product._id.equals(new mongoose.Types.ObjectId(productId));
     });
 
@@ -346,10 +344,7 @@ const removeProduct = async (req, res) => {
         .json({ error: "Product not found in the document" });
     }
 
-    // Remove the product from the products array
     existingDocument.products.splice(productIndex, 1);
-
-    // Save the updated document without the removed product
     const updatedDocument = await existingDocument.save();
     console.log("Updated document:", updatedDocument);
 
