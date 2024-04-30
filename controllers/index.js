@@ -3,8 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../services/schemas/UserSchema");
 const Product = require("../services/schemas/ProductSchema");
 const MyProducts = require("../services/schemas/MyProductSchema");
-const { findUserName, calculateDailyRate } = require("../services/index");
-const { error } = require("console");
+const { findUserName } = require("../services/index");
 require("dotenv").config();
 const bcrypt = require("bcrypt");
 const secret = process.env.SECRET;
@@ -47,7 +46,7 @@ const userSignup = async (req, res) => {
       id: result.id,
       email: result.email,
     };
-    const token = jwt.sign(payload, secret, { expiresIn: "10h" });
+    const token = jwt.sign(payload, secret, { expiresIn: "1h" });
     await services.updateUser(result.id, { token });
 
     res.status(201).json({
@@ -74,7 +73,7 @@ const userLogin = async (req, res, next) => {
       id: result.id,
       email: result.email,
     };
-    const token = jwt.sign(payload, secret, { expiresIn: "10h" });
+    const token = jwt.sign(payload, secret, { expiresIn: "1h" });
     await services.updateUser(result.id, { token });
 
     res.status(200).json({
@@ -297,7 +296,6 @@ const saveProductData = async (req, res) => {
       const newDocumentData = {
         owner: req.user._id,
         products: [],
-        y,
       };
       existingDocument = await MyProducts.create(newDocumentData);
       console.log("New document created:", existingDocument);
@@ -355,6 +353,16 @@ const removeProduct = async (req, res) => {
   }
 };
 
+const getAllProducts = async (req, res) => {
+  try {
+    const products = await Product.find();
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
+};
+
 module.exports = {
   getUsers,
   userSignup,
@@ -364,6 +372,6 @@ module.exports = {
   userLogout,
   getProducts,
   saveProductData,
-
   removeProduct,
+  getAllProducts,
 };

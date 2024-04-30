@@ -21,4 +21,7 @@ router.post("/users/getProducts", auth, controller.getProducts);
 router.post("/myproducts/saveProductData", auth, controller.saveProductData);
 router.delete("/myproducts/:productId", auth, controller.removeProduct);
 
+//Products routs
+router.get("/products", controller.getAllProducts);
+
 module.exports = router;
