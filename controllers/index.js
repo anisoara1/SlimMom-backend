@@ -285,32 +285,66 @@ const saveProductData = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
     const productCalories = selectedProduct.calories;
-    const totalCalories = (productCalories * quantity) / 100;
+    const totalCalories = Math.round((productCalories * quantity) / 100);
 
-    let existingDocument = await MyProducts.findOne({ owner: req.user._id });
+    const originalDate = req.user.updatedAt;
+    const formattedDate = new Date(originalDate).toISOString().split("T")[0];
+
+    let existingDocument = await MyProducts.findOne({
+      owner: req.user._id,
+    });
     console.log("Existing document:", existingDocument);
+
     if (!existingDocument) {
       console.log(
-        "No existing document found for the owner. Creating a new one..."
+        "No existing document found for the owner and login date. Creating a new one..."
       );
+
       const newDocumentData = {
         owner: req.user._id,
-        products: [],
+        products: [
+          {
+            product: req.body.product,
+            quantity: req.body.quantity,
+            newCalories: totalCalories,
+          },
+        ],
+        date: formattedDate,
       };
+
       existingDocument = await MyProducts.create(newDocumentData);
       console.log("New document created:", existingDocument);
+    } else {
+      console.log("Existing document found. Appending product...");
+
+      const currentDateIndex = existingDocument.dates.findIndex(
+        (date) => date.date.toString() === new Date(formattedDate).toString()
+      );
+      if (currentDateIndex !== -1) {
+        existingDocument.dates[currentDateIndex].products.push({
+          product: req.body.product,
+          quantity: req.body.quantity,
+          newCalories: totalCalories,
+        });
+      } else {
+        const newDateArray = {
+          date: formattedDate,
+          products: [
+            {
+              product: req.body.product,
+              quantity: req.body.quantity,
+              newCalories: totalCalories,
+            },
+          ],
+        };
+        existingDocument.dates.push(newDateArray);
+      }
+
+      existingDocument = await existingDocument.save();
+      console.log("Updated document:", existingDocument);
     }
 
-    existingDocument.products.push({
-      product: product,
-      quantity: quantity,
-      newCalories: totalCalories,
-    });
-
-    const updatedDocument = await existingDocument.save();
-    console.log("Updated document:", updatedDocument);
-
-    res.status(200).json(updatedDocument);
+    res.status(200).json(existingDocument);
   } catch (error) {
     console.error("Error adding product:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -332,8 +366,15 @@ const removeProduct = async (req, res) => {
         .json({ error: "Document not found for the owner" });
     }
 
-    const productIndex = existingDocument.products.findIndex((product) => {
-      return product._id.equals(new mongoose.Types.ObjectId(productId));
+    let productIndex = -1;
+    existingDocument.dates.forEach((date, index) => {
+      const foundIndex = date.products.findIndex((product) => {
+        return product._id.equals(new mongoose.Types.ObjectId(productId));
+      });
+      if (foundIndex !== -1) {
+        productIndex = foundIndex;
+        existingDocument.dates[index].products.splice(productIndex, 1);
+      }
     });
 
     if (productIndex === -1) {
@@ -342,7 +383,6 @@ const removeProduct = async (req, res) => {
         .json({ error: "Product not found in the document" });
     }
 
-    existingDocument.products.splice(productIndex, 1);
     const updatedDocument = await existingDocument.save();
     console.log("Updated document:", updatedDocument);
 

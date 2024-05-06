@@ -17,16 +17,20 @@ const productSchema = new Schema({
 });
 
 const MyProductsSchema = new Schema({
-  products: [productSchema], // Define an array of products within each document
   owner: {
     type: Schema.Types.ObjectId,
     required: true,
     ref: "User",
   },
-  date: {
-    type: Date,
-    default: Date.now,
-  },
+  dates: [
+    {
+      date: {
+        type: Date,
+        default: Date.now,
+      },
+      products: [productSchema],
+    },
+  ],
 });
 
 const MyProducts = mongoose.model("myproducts", MyProductsSchema);
