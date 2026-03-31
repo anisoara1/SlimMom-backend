@@ -1,6 +1,6 @@
 const passport = require("passport");
 const passportJWT = require("passport-jwt");
-const User = require("../services/schemas/UserSchema");
+const User = require("../schemas/UserSchema");
 
 require("dotenv").config();
 
@@ -24,5 +24,5 @@ passport.use(
         return done(null, user);
       })
       .catch((err) => done(err));
-  })
+  }),
 );

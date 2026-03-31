@@ -128,6 +128,31 @@ http://localhost:5000
 
 ---
 
+## 🚀 Deployment pe Render
+
+### 1. Conectează repository-ul GitHub la Render
+- Creează un cont pe [Render](https://render.com)
+- Conectează repository-ul SlimMom-backend
+
+### 2. Configurează serviciul
+- **Build Command**: Lasă gol (nu e nevoie de build)
+- **Start Command**: `npm start`
+- **Environment**: Node.js
+
+### 3. Variabile de mediu
+Setează următoarele variabile în dashboard-ul Render:
+```
+URL_DB=mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority
+SECRET=your_jwt_secret_key
+```
+
+### 4. Deploy
+Render va construi și porni aplicația automat. Aplicația va fi live la URL-ul generat de Render.
+
+**Notă**: Pe planul gratuit, aplicația se oprește după 15 minute de inactivitate, dar se reactivează la prima cerere.
+
+---
+
 ## 🧱 Arhitectură și bune practici
 
 Backend-ul este organizat pe principii clare:
